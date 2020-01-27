@@ -8,7 +8,6 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.net.Socket;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -23,8 +22,9 @@ public class Client {
 
     public static void main(String[] args) throws IOException {
         final Client client = new Client();
-        CompletableFuture.runAsync(client::screenWriter);
-        CompletableFuture.runAsync(client::mouseConsumer);
+        client.mouseConsumer();
+//        CompletableFuture.runAsync(client::screenWriter);
+//        CompletableFuture.runAsync(client::mouseConsumer);
     }
 
     private void mouseConsumer() {
@@ -35,9 +35,9 @@ public class Client {
                 Socket socket = new Socket(ip, port);
                 OutputStream output = socket.getOutputStream();
 
-                try (PrintWriter writer = new PrintWriter(new BufferedOutputStream(output), true)) {
-                    writer.println(SocketConnections.SOCKET_MOUSE.name());
-                }
+                PrintWriter writer = new PrintWriter(new BufferedOutputStream(output), true);
+                writer.println(SocketConnections.SOCKET_MOUSE.name());
+                writer.println("Test");
 
                 final BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 

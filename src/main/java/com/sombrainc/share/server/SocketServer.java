@@ -4,49 +4,26 @@ import com.sombrainc.share.enumeration.SocketConnections;
 import com.sombrainc.share.server.connection.SocketConnection;
 import com.sombrainc.share.server.connection.impl.MousePointerProviderConnection;
 import com.sombrainc.share.server.connection.impl.ScreenReaderConnection;
-import javafx.application.Application;
-import javafx.scene.Scene;
 import javafx.scene.image.ImageView;
-import javafx.scene.image.WritableImage;
-import javafx.scene.layout.StackPane;
-import javafx.stage.Stage;
 
-import java.awt.*;
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.HashMap;
-import java.util.Map;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;
 
 import static com.sombrainc.share.enumeration.SocketConnections.SOCKET_MOUSE;
 import static com.sombrainc.share.enumeration.SocketConnections.SOCKET_SCREEN;
 import static com.sombrainc.share.util.SocketUtils.sendMessage;
 
-public class SocketServer extends Application {
-    private ImageView imageView;
+public class SocketServer {
+    private final ImageView imageView;
 
-    public static void main(String[] args) {
-        launch(args);
-    }
-
-    public void start(Stage primaryStage) throws Exception {
-        final SocketServer socketServer = new SocketServer();
-        showStage(primaryStage);
-        socketServer.start();
-    }
-
-    private void showStage(Stage primaryStage) {
-        imageView = new ImageView();
-
-        StackPane root = new StackPane();
-        root.getChildren().add(imageView);
-
-        Scene scene = new Scene(root, 800, 800);
-
-        primaryStage.setTitle("Hello World!");
-        primaryStage.setScene(scene);
-        primaryStage.show();
+    public SocketServer(ImageView imageView) {
+        this.imageView = imageView;
     }
 
     public void start() {
@@ -61,16 +38,16 @@ public class SocketServer extends Application {
     }
 
     private void handleConnection(Socket socket) throws IOException {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
-            String argLine = reader.readLine();
-            System.out.printf("Received line: %s\n", argLine);
-            final SocketConnection socketConnection = lookForConnection(argLine);
-            if (socketConnection == null) {
-                sendMessage(socket.getOutputStream(), "BAD");
-            } else {
-                sendMessage(socket.getOutputStream(), String.format("OK\n%s", argLine));
-                CompletableFuture.runAsync(() -> socketConnection.consume(socket));
-            }
+        final InputStream inputStream = socket.getInputStream();
+        String argLine = readLine(inputStream);
+        System.out.printf("Received line: %s\n", argLine);
+        final SocketConnection socketConnection = lookForConnection(argLine);
+        final OutputStream outputStream = socket.getOutputStream();
+        if (socketConnection == null) {
+            sendMessage(outputStream, "BAD");
+        } else {
+            sendMessage(outputStream, String.format("OK\n%s", argLine));
+            CompletableFuture.runAsync(() -> socketConnection.consume(socket, inputStream, outputStream));
         }
     }
 
@@ -82,6 +59,22 @@ public class SocketServer extends Application {
             return new MousePointerProviderConnection();
         }
         return null;
+    }
+
+    public String readLine(InputStream inputStream) throws IOException {
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        int r;
+
+        for (r = inputStream.read(); r != '\n' && r != -1; r = inputStream.read()) {
+            baos.write(r);
+        }
+
+        if (r == -1 && baos.size() == 0) {
+            return null;
+        }
+
+        return baos.toString(StandardCharsets.UTF_8);
     }
 
 }

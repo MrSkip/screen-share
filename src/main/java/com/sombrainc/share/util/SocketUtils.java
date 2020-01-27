@@ -10,11 +10,8 @@ public class SocketUtils {
     }
 
     public static void sendMessage(final OutputStream out, final String message) {
-        try (PrintWriter writer = new PrintWriter(new BufferedOutputStream(out))) {
-            writer.println();
-        } catch (Exception e) {
-            System.err.println(e);
-        }
+        PrintWriter writer = new PrintWriter(new BufferedOutputStream(out));
+        writer.println(message);
     }
 
 }
